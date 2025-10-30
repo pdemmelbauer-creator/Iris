@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <!-- WICHTIG: Viewport für mobile Optimierung -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[SYSTEM] Tägliche Quest</title>
+    <!-- Lade Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* Solo Leveling Style Variablen */
+        :root {
+            --primary-glow: #00bcd4; /* Cyan Glow */
+            --warning-glow: #ef4444; /* Red Glow */
+            --bg-color: #0f172a; /* Dark Blue Slate */
+            --card-color: #1e293b; /* Darker Card */
+            --text-color: #f1f5f9; /* Light text */
+            --font-family: 'Inter', sans-serif;
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.5s;
+            /* Anpassung des Paddings für den globalen Header und die Bottom-Nav */
+            padding-top: 90px;
+            padding-bottom: 70px; 
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        .solo-card {
+            background-color: var(--card-color);
+            box-shadow: 0 0 15px rgba(0, 188, 212, 0.2); 
+            border: 2px solid var(--primary-glow);
+            border-radius: 0.75rem;
+        }
+        .glow-text {
+            color: var(--primary-glow);
+            text-shadow: 0 0 6px var(--primary-glow);
+        }
+        .warning-text {
+            color: var(--warning-glow);
+            text-shadow: 0 0 6px var(--warning-glow);
+        }
+        .countdown-display {
+            font-size: 1.5rem; /* Etwas kleiner für den Header */
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--warning-glow);
+            color: var(--warning-glow);
+        }
+        .btn-success {
+            background-color: #10b981; 
+            transition: all 0.2s;
+        }
+        .btn-success:hover:enabled {
+            background-color: #059669;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+            transform: translateY(-1px);
+        }
+        .btn-success:disabled {
+            background-color: #374151;
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        /* Navigation Styles */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: #1e293b;
+            border-top: 1px solid #00bcd4;
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        .tab-button {
+            transition: all 0.2s;
+            color: #94a3b8;
+            border-radius: 0.5rem;
+        }
+        .active-tab {
+            color: var(--primary-glow);
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.5);
+            transform: translateY(-2px);
+        }
+        .inactive-tab:hover {
+            color: #f1f5f9;
+        }
+        /* Mitternachts-Overlay Styles */
+        .midnight-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+            color: white;
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 1000;
+            animation: fadeIn 0.5s;
+        }
+        .penalty-warning {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #ff3333;
+            text-shadow: 0 0 15px #ff0000;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .time-label {
+            color: #94a3b8; 
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        .loader {
+            border: 8px solid #334155;
+            border-top: 8px solid var(--primary-glow);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .global-header {
+            background-color: rgba(15, 23, 42, 0.9); /* Dark Blue Slate mit leichter Transparenz */
+            backdrop-filter: blur(5px);
+        }
+        /* Level Up Animation */
+        .level-up-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 2rem;
+            background-color: #00bcd4;
+            color: #0f172a;
+            border-radius: 1rem;
+            box-shadow: 0 0 30px rgba(0, 188, 212, 1);
+            font-size: 2rem;
+            font-weight: 900;
+            z-index: 1001;
+            animation: flashScale 0.4s ease-out forwards;
+        }
+        @keyframes flashScale {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* NEU: Intensiver Rüttel-Effekt für den gesamten Body */
+        @keyframes intense-shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-3px, -4px) rotate(-1.5deg); }
+            20% { transform: translate(-4px, 0px) rotate(1.5deg); }
+            30% { transform: translate(4px, 3px) rotate(0deg); }
+            40% { transform: translate(2px, -2px) rotate(1.5deg); }
+            50% { transform: translate(-2px, 4px) rotate(-1.5deg); }
+            60% { transform: translate(-4px, 2px) rotate(0deg); }
+            70% { transform: translate(4px, 2px) rotate(-1.5deg); }
+            80% { transform: translate(-2px, -2px) rotate(1.5deg); }
+            90% { transform: translate(2px, 3px) rotate(0deg); }
+            100% { transform: translate(1px, 1px) rotate(0deg); }
+        }
+        .shaking-app {
+            animation: intense-shake 0.1s infinite;
+            transform-origin: center;
+        }
+    </style>
+    <!-- Import Firebase Modules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- Globale Firebase-Variablen ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let intervalId = null;
+        
+        // --- Quest Task Definition ---
+        function initializeDailyTasks() {
+            return [
+                { name: '100 Liegestütze (Absolviert)', completed: false, index: 0 },
+                { name: '100 Sit-ups (Absolviert)', completed: false, index: 1 },
+                { name: '100 Kniebeugen (Absolviert)', completed: false, index: 2 },
+                { name: '10km Laufen (Absolviert)', completed: false, index: 3 }
+            ];
+        }
+
+        // --- App State ---
+        let appState = {
+            currentTab: 'quest', 
+            charName: 'Jäger',
+            level: 1,
+            currentXp: 0,
+            xpToNextLevel: 100,
+            stats: {
+                strength: 10, agility: 10, stamina: 10, intelligence: 10, perception: 10,
+            },
+            points: 0,
+            completedQuests: 0,
+            isQuestCompleted: false, 
+            dailyQuestTasks: initializeDailyTasks(), 
+            midnightTriggered: false, // Wichtig: Wird auf true gesetzt, wenn Strafe ausgelöst wird
+            isAuthReady: false,
+            isLoading: true,
+        };
+
+        // --- Firebase Initialisierung und Auth ---
+        async function initializeFirebase() {
+            if (firebaseConfig) {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                // setLogLevel('Debug'); 
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                    } else {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                    if (userId && !appState.isAuthReady) {
+                        appState.isAuthReady = true;
+                        setupFirestoreListener();
+                        startQuestTimer();
+                        updateUI();
+                    }
+                });
+            } else {
+                console.error("Firebase Konfiguration fehlt.");
+                appState.isLoading = false;
+                updateUI();
+            }
+        }
+
+        // --- Firestore Datenverwaltung ---
+        function getDocRef() {
+            if (!userId || !appId) return null;
+            // Privater Pfad: /artifacts/{appId}/users/{userId}/data/profile
+            return doc(db, 'artifacts', appId, 'users', userId, 'data', 'profile');
+        }
+
+        function setupFirestoreListener() {
+            const docRef = getDocRef();
+            if (!docRef) return;
+
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    appState.charName = data.charName || appState.charName;
+                    
+                    appState.level = data.level || appState.level;
+                    appState.currentXp = data.currentXp || appState.currentXp;
+                    appState.xpToNextLevel = data.xpToNextLevel || appState.xpToNextLevel;
+
+                    appState.stats = data.stats || appState.stats;
+                    appState.points = data.points || appState.points;
+                    appState.completedQuests = data.completedQuests || appState.completedQuests;
+                    appState.isQuestCompleted = data.isQuestCompleted || false;
+                    appState.midnightTriggered = data.midnightTriggered || false;
+                    appState.dailyQuestTasks = data.dailyQuestTasks || initializeDailyTasks(); 
+                } else {
+                    // Dokument initialisieren, falls es nicht existiert
+                    saveStateToFirestore(true); 
+                }
+
+                appState.isLoading = false;
+                updateUI();
+            }, (error) => {
+                console.error("Fehler beim Abhören von Firestore:", error);
+                appState.isLoading = false;
+                updateUI();
+            });
+        }
+
+        function saveStateToFirestore(isInitial = false) {
+            const docRef = getDocRef();
+            if (!docRef) return;
+
+            const stateToSave = {
+                charName: appState.charName,
+                level: appState.level,          
+                currentXp: appState.currentXp,  
+                xpToNextLevel: appState.xpToNextLevel, 
+                stats: appState.stats,
+                points: appState.points,
+                completedQuests: appState.completedQuests,
+                isQuestCompleted: appState.isQuestCompleted,
+                dailyQuestTasks: appState.dailyQuestTasks, 
+                midnightTriggered: appState.midnightTriggered,
+                userId: userId,
+            };
+
+            if (isInitial) {
+                setDoc(docRef, stateToSave).catch(e => console.error("Fehler beim Initialisieren des Dokuments:", e));
+            } else {
+                updateDoc(docRef, stateToSave).catch(e => console.error("Fehler beim Aktualisieren des Dokuments:", e));
+            }
+        }
+        
+        window.saveStateToFirestore = saveStateToFirestore; 
+
+        // --- Status und Attribut Logik ---
+        window.addStat = function(stat) {
+            if (appState.points > 0) {
+                appState.stats[stat]++;
+                appState.points--;
+                saveStateToFirestore();
+            }
+        }
+
+        function getTrainingBonus() {
+            return Math.floor(appState.completedQuests / 5) + (appState.level - 1); 
+        }
+
+        function getStatValue(stat) {
+            return appState.stats[stat] + getTrainingBonus();
+        }
+        
+        // --- Quest und Timer Logik (Integriert) ---
+
+        function startQuestTimer() {
+            if (intervalId) return; 
+
+            function updateQuestAndTimer() {
+                const now = new Date();
+
+                // 1. Countdown-Berechnung
+                const nextMidnight = new Date();
+                nextMidnight.setHours(24, 0, 0, 0); 
+
+                let remainingMs = nextMidnight.getTime() - now.getTime();
+                
+                if (remainingMs < 0) {
+                     remainingMs += 24 * 60 * 60 * 1000; 
+                }
+                
+                const totalSeconds = Math.floor(remainingMs / 1000);
+                const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+                const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+                const s = String(totalSeconds % 60).padStart(2, '0');
+                    
+                const countdownDisplay = document.getElementById('countdownDisplay');
+                if (countdownDisplay) countdownDisplay.textContent = `${h}h ${m}m ${s}s`;
+                
+                const timeDisplay = document.getElementById('timeDisplay');
+                if (timeDisplay) timeDisplay.textContent = now.toLocaleTimeString('de-DE');
+
+                // 2. Midnight Trigger/Reset Check
+                // Prüfe, ob es Mitternacht ist und der Midnight Trigger heute noch nicht ausgelöst wurde
+                const isMidnight = now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() === 0;
+
+                if (isMidnight) {
+                    if (!appState.midnightTriggered) { 
+                        if (!appState.isQuestCompleted) {
+                            // !!! STRAFE WIRD AUSGELÖST !!!
+                            
+                            // 1. Intensiver Rüttel- und Vibrations-Effekt
+                            const body = document.body;
+                            body.classList.add('shaking-app');
+                            if (navigator.vibrate) {
+                                // Lange, intensive Vibration (200ms an, 100ms aus, etc.)
+                                navigator.vibrate([200, 100, 200, 100, 500]); 
+                            }
+
+                            // 2. Timer stoppen (wichtig, bevor der Zustand gespeichert wird)
+                            clearInterval(intervalId); 
+                            intervalId = null;
+
+                            // 3. Zustand für Straf-Bildschirm speichern und UI aktualisieren
+                            setTimeout(() => {
+                                body.classList.remove('shaking-app'); // Rütteln beenden
+                                appState.midnightTriggered = true; 
+                                saveStateToFirestore(); // Speichert den midnightTriggered-Zustand
+                                updateUI();
+                                startQuestTimer(); // Startet den Timer für den nächsten Tag (zurücksetzen auf Mitternacht)
+                            }, 1500); // 1.5 Sekunden Rütteln
+                            
+                        } else {
+                            // Erfolgreicher Quest-Reset für den neuen Tag
+                            appState.isQuestCompleted = false;
+                            appState.dailyQuestTasks = initializeDailyTasks(); 
+                            appState.midnightTriggered = false; // Reset für den neuen Tag
+                            saveStateToFirestore();
+                        }
+                    }
+                }
+                
+                // Behandle den Zustand, falls der Benutzer nach 1 Uhr morgens die App öffnet, aber die Strafe noch nicht resettet wurde
+                if (now.getHours() > 0 && now.getHours() < 3 && appState.midnightTriggered && appState.isQuestCompleted) {
+                     appState.midnightTriggered = false;
+                }
+
+
+                updateUI(); 
+            }
+
+            intervalId = setInterval(updateQuestAndTimer, 1000);
+            updateQuestAndTimer(); 
+        }
+
+        // NEU: Logik zum Umschalten einer einzelnen Aufgabe
+        window.toggleTaskCompletion = function(index) {
+            if (appState.isQuestCompleted || appState.midnightTriggered) {
+                return;
+            }
+
+            const task = appState.dailyQuestTasks[index];
+            if (task) {
+                task.completed = !task.completed;
+                saveStateToFirestore();
+                updateUI(); 
+            }
+        }
+
+
+        window.completeQuest = function() {
+            const allTasksCompleted = appState.dailyQuestTasks.every(t => t.completed);
+
+            if (allTasksCompleted && !appState.isQuestCompleted && !appState.midnightTriggered) {
+                let levelUp = false;
+                
+                appState.isQuestCompleted = true; 
+                appState.completedQuests++; 
+                appState.points += 5; 
+
+                const xpGained = 50; 
+                appState.currentXp += xpGained;
+                
+                while (appState.currentXp >= appState.xpToNextLevel) {
+                    appState.currentXp -= appState.xpToNextLevel;
+                    appState.level++;
+                    appState.points += 10; 
+                    appState.xpToNextLevel = Math.floor(appState.xpToNextLevel * 1.5); 
+                    levelUp = true;
+                }
+               
+                console.log(`Quest abgeschlossen. Belohnung: 5 Punkte, XP: ${xpGained}`);
+                
+                const contentArea = document.getElementById('appContainer');
+                if (levelUp) {
+                    contentArea.insertAdjacentHTML('beforebegin', '<div id="levelUpMsg" class="level-up-popup">LEVEL UP! +10 PUNKTE</div>');
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // Kurze Level-Up Vibration
+                    setTimeout(() => {
+                        const msg = document.getElementById('levelUpMsg');
+                        if (msg) msg.remove();
+                    }, 2000);
+                }
+                contentArea.insertAdjacentHTML('beforebegin', '<div id="questSuccessMsg" class="p-3 bg-green-800 text-white rounded-lg mb-4 text-center">[SYSTEM] Quest erfolgreich! +5 Punkte erhalten.</div>');
+                setTimeout(() => {
+                    const msg = document.getElementById('questSuccessMsg');
+                    if (msg) msg.remove();
+                }, 4000);
+
+                saveStateToFirestore();
+            } else if (!allTasksCompleted) {
+                 const contentArea = document.getElementById('contentArea');
+                 const currentMsgs = document.querySelectorAll('.temp-msg');
+                 currentMsgs.forEach(msg => msg.remove());
+                 if (contentArea) contentArea.insertAdjacentHTML('beforebegin', '<div id="questFailMsg" class="p-3 bg-red-800 text-white rounded-lg mb-4 text-center temp-msg">[SYSTEM] Fehler: Nicht alle Quest-Aufgaben sind abgeschlossen!</div>');
+                setTimeout(() => {
+                    const msg = document.getElementById('questFailMsg');
+                    if (msg) msg.remove();
+                }, 4000);
+            }
+        }
+
+        window.startPenaltyQuest = function() {
+            // Beim Start der Strafquest wird der Zustand für den neuen Tag zurückgesetzt
+            appState.isQuestCompleted = false; 
+            appState.midnightTriggered = false; 
+            appState.dailyQuestTasks = initializeDailyTasks(); // Task Reset
+            
+            // Setze 5 Stat-Punkte als Konsequenz der Strafe ab
+            let pointsToDeduct = 5;
+            const statsKeys = Object.keys(appState.stats);
+            while (pointsToDeduct > 0) {
+                for (const key of statsKeys) {
+                    if (appState.stats[key] > 10) { // Punkte nur von Stats abziehen, die über dem Basiswert 10 liegen
+                        appState.stats[key]--;
+                        pointsToDeduct--;
+                        if (pointsToDeduct === 0) break;
+                    }
+                }
+                // Sicherheitsabbruch, falls alle Stats auf 10 sind
+                if (pointsToDeduct > 0 && statsKeys.every(key => appState.stats[key] === 10)) {
+                    break;
+                }
+            }
+
+            console.log("Strafquest gestartet. Status zurückgesetzt. 5 Punkte abgezogen (wenn möglich).");
+            saveStateToFirestore();
+            startQuestTimer(); // Starte den Timer neu
+            updateUI();
+        }
+
+        // --- UI Rendering ---
+        window.changeTab = function(tabName) {
+            appState.currentTab = tabName;
+            updateUI();
+        }
+        
+        function renderStatusTab() {
+            const trainingBonus = getTrainingBonus();
+            const hp = getStatValue('stamina') * 10;
+            const mp = getStatValue('intelligence') * 5;
+            
+            const xpPercentage = Math.min(100, (appState.currentXp / appState.xpToNextLevel) * 100);
+
+
+            // Funktion zur Namensänderung
+            window.handleNameChange = function(input) {
+                appState.charName = input.value; 
+                saveStateToFirestore();
+            }
+
+            let statsHtml = Object.keys(appState.stats).map(stat => {
+                const statName = {
+                    strength: 'Stärke', agility: 'Beweglichkeit', stamina: 'Ausdauer',
+                    intelligence: 'Intelligenz', perception: 'Wahrnehmung',
+                }[stat] || stat;
+                
+                const baseValue = appState.stats[stat];
+                const totalValue = getStatValue(stat);
+                
+                return `
+                    <div class="flex justify-between items-center py-2 border-b border-gray-700/50 last:border-b-0">
+                        <span class="text-gray-300 font-medium w-1/4">${statName}</span>
+                        <span class="text-lg font-bold w-1/4 text-center">${baseValue}</span>
+                        <span class="text-lg font-bold w-1/4 text-center glow-text">${totalValue}</span>
+                        <button onclick="addStat('${stat}')" 
+                                ${appState.points === 0 ? 'disabled' : ''}
+                                class="px-2 py-1 ml-2 text-white text-sm rounded transition-all 
+                                ${appState.points > 0 ? 'bg-cyan-600 hover:bg-cyan-500' : 'bg-gray-700 cursor-not-allowed'}">
+                            +1
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+
+            return `
+                <div class="space-y-6 mt-4">
+                    <!-- HEADER -->
+                    <div class="p-4 bg-gray-800 rounded-lg border border-cyan-700">
+                        <h2 class="text-xl font-bold mb-2 text-cyan-400 border-b border-gray-700 pb-2">Name des Jägers:</h2>
+                        <input type="text" id="charNameInput" value="${appState.charName}" 
+                               onchange="handleNameChange(this)"
+                               class="w-full bg-gray-900 text-lg font-bold text-white p-2 rounded border border-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all">
+                        <p class="text-xs text-gray-500 mt-1">Jäger-ID (UID): <span class="text-gray-400">${userId || 'Lade...'}</span></p>
+                    </div>
+
+                    <!-- LEVEL & XP BAR -->
+                    <div class="solo-card p-4">
+                        <h3 class="text-2xl font-bold mb-3 text-white border-b border-cyan-700/50 pb-2">Jäger-Level</h3>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xl font-extrabold glow-text">LEVEL ${appState.level}</span>
+                            <span class="text-gray-400 text-sm">${appState.currentXp} / ${appState.xpToNextLevel} XP</span>
+                        </div>
+                        <!-- XP Bar -->
+                        <div class="w-full bg-gray-700 rounded-full h-3">
+                            <div class="h-3 rounded-full bg-cyan-500 transition-all duration-500" 
+                                 style="width: ${xpPercentage}%;">
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- HP / MP -->
+                    <div class="flex space-x-4">
+                        <div class="w-1/2 p-3 bg-gray-800 rounded-lg border border-red-700">
+                            <p class="text-red-400 font-bold text-sm">KP (Leben)</p>
+                            <p class="text-2xl font-extrabold text-red-500">${hp}</p>
+                        </div>
+                        <div class="w-1/2 p-3 bg-gray-800 rounded-lg border border-blue-700">
+                            <p class="text-blue-400 font-bold text-sm">MP (Mana)</p>
+                            <p class="text-2xl font-extrabold text-blue-500">${mp}</p>
+                        </div>
+                    </div>
+
+                    <!-- ATTRIBUTE -->
+                    <div class="solo-card p-4">
+                        <h3 class="text-2xl font-bold mb-3 text-white border-b border-cyan-700/50 pb-2">Attribute</h3>
+                        <div class="flex justify-between font-bold text-xs text-gray-500 mb-2 border-b border-gray-700 pb-1">
+                            <span class="w-1/4">STAT</span>
+                            <span class="w-1/4 text-center">Basis</span>
+                            <span class="w-1/4 text-center">Gesamt</span>
+                            <span class="w-1/4 text-right"></span>
+                        </div>
+                        ${statsHtml}
+                        <div class="mt-4 p-3 bg-gray-700/50 rounded-lg flex justify-between items-center">
+                            <span class="text-white font-bold">Verfügbare Punkte:</span>
+                            <span class="text-3xl font-extrabold glow-text">${appState.points}</span>
+                        </div>
+                    </div>
+
+                    <!-- TRAINING BONUS -->
+                    <div class="solo-card p-4">
+                        <h3 class="text-xl font-bold text-white mb-2 border-b border-cyan-700/50 pb-2">Disziplin-Bonus</h3>
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-gray-400">Abgeschlossene Quests:</span>
+                            <span class="text-xl font-extrabold text-white">${appState.completedQuests}</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-2">
+                            <span class="text-gray-400">Gesamt-Bonus auf alle Stats:</span>
+                            <span class="text-xl font-extrabold text-green-500">+${trainingBonus}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Bonus resultiert aus Level und abgeschlossenen Quests.</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderQuestTab() {
+            const allTasksCompleted = appState.dailyQuestTasks.every(t => t.completed);
+            const completedTasksCount = appState.dailyQuestTasks.filter(t => t.completed).length;
+            const totalTasksCount = appState.dailyQuestTasks.length;
+            const progressPercentage = totalTasksCount > 0 ? Math.floor((completedTasksCount / totalTasksCount) * 100) : 0;
+            
+            const statusText = appState.isQuestCompleted 
+                ? '[ABGESCHLOSSEN] Du hast die Strafe für heute vermieden.'
+                : (appState.midnightTriggered 
+                    ? '[GESCHEITERT] Starte die Strafquest.'
+                    : (allTasksCompleted 
+                        ? '[BEREIT FÜR ABSCHLUSS] Quest-Ziele erreicht.'
+                        : '[IN BEARBEITUNG] Beeile dich! Die Zeit rennt!')
+                );
+            
+            const statusClass = appState.isQuestCompleted ? 'glow-text' : (appState.midnightTriggered ? 'warning-text' : 'warning-text');
+            const isQuestFinalized = appState.isQuestCompleted || appState.midnightTriggered;
+            
+            const questTitle = 'Tägliche Trainingsquest: Körperliches Limit';
+            const questFocus = 'Primäre Steigerung der STÄRKE und AUSDAUER.';
+
+            return `
+                <div class="space-y-6 mt-4">
+                    <h2 class="text-3xl font-black text-center warning-text">[SYSTEM-QUEST]</h2>
+
+                    <!-- Aktuelle Zeitanzeige -->
+                    <div class="mb-8 p-3 text-center rounded-lg bg-gray-800 border-2 border-gray-700">
+                         <p class="time-label">Aktuelle Systemzeit</p>
+                        <p id="timeDisplay" class="text-xl font-mono font-bold text-gray-400 mt-1">
+                            --:--:--
+                        </p>
+                    </div>
+
+                    <!-- Quest Details -->
+                    <div class="solo-card p-6">
+                        <h3 class="text-xl font-bold mb-4 text-white border-b border-cyan-700/50 pb-2">${questTitle}</h3>
+                        
+                        <!-- NEU: Quest Progress Bar -->
+                        <div class="bg-gray-800 p-3 rounded-lg border border-cyan-700/50 mb-6">
+                            <p class="text-sm font-bold text-cyan-400 mb-1">QUEST-FORTSCHRITT</p>
+                            <div class="w-full bg-gray-700 rounded-full h-4 relative">
+                                <div class="h-4 rounded-full bg-cyan-500 transition-all duration-500" 
+                                     style="width: ${progressPercentage}%;">
+                                    <span class="absolute right-0 text-xs font-bold text-white pr-2 leading-4" style="text-shadow: 0 0 3px black;">
+                                        ${progressPercentage}%
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quest Focus -->
+                        <div class="bg-gray-700/50 p-3 rounded-lg mb-4 border border-cyan-500/30">
+                            <p class="text-sm font-bold text-cyan-400">QUEST-FOKUS:</p>
+                            <p class="text-lg font-semibold text-white">${questFocus}</p>
+                        </div>
+                        
+                        <h4 class="text-lg font-semibold text-gray-300 mb-2">
+                            Aufgabenliste: 
+                            <span class="text-sm text-cyan-400 font-bold">
+                                (${completedTasksCount}/${totalTasksCount} abgeschlossen)
+                            </span>
+                        </h4>
+                        
+                        <!-- Interaktive Aufgabenliste -->
+                        <ul class="text-gray-400 list-none space-y-3 mb-4">
+                            ${appState.dailyQuestTasks.map((task, index) => {
+                                const checkIcon = task.completed 
+                                    ? `<svg class="w-6 h-6 mr-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`
+                                    : `<svg class="w-6 h-6 mr-3 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+
+                                return `
+                                    <li class="flex justify-between items-center bg-gray-900 p-3 rounded-lg border 
+                                               ${task.completed ? 'border-green-600/50' : 'border-gray-700/50'}">
+                                        <div class="flex items-center">
+                                            ${checkIcon}
+                                            <span class="text-white font-medium ${task.completed ? 'line-through opacity-70' : ''}">${task.name.replace(' (Absolviert)', '')}</span>
+                                        </div>
+                                        <button onclick="toggleTaskCompletion(${index})"
+                                                ${isQuestFinalized ? 'disabled' : ''}
+                                                class="px-3 py-1 text-sm rounded transition-all font-semibold 
+                                                        ${isQuestFinalized ? 'bg-gray-600 cursor-not-allowed' : (task.completed ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600')}">
+                                            ${task.completed ? 'Rückgängig' : 'Erledigt'}
+                                        </button>
+                                    </li>
+                                `;
+                            }).join('')}
+                        </ul>
+                        
+                        <!-- Status Section -->
+                        <div class="mt-4 p-3 bg-gray-700/50 rounded-lg text-center">
+                            <div id="statusMessage" class="${statusClass} font-semibold text-xl">
+                                Status: ${statusText}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quest Button -->
+                    <button onclick="completeQuest()"
+                            ${isQuestFinalized || !allTasksCompleted ? 'disabled' : ''}
+                            class="w-full btn-success text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-md focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50
+                            ${isQuestFinalized || !allTasksCompleted ? 'bg-gray-600' : 'btn-success'}">
+                        ${appState.isQuestCompleted ? '[ABGESCHLOSSEN]' : (appState.midnightTriggered ? '[GESCHEITERT]' : '[ERFÜLLEN] Quest abschließen')}
+                    </button>
+                    
+                    <p class="text-xs text-gray-500 text-center mt-4">
+                        Erfolg: +5 Stat-Punkte, XP-Gewinn und Trainings-Bonus. Misserfolg: Strafquest und Stat-Abzug.
+                    </p>
+
+                </div>
+            `;
+        }
+
+        function renderAbilitiesTab() {
+            return `
+                <div class="solo-card p-6 text-center mt-6">
+                    <h3 class="text-3xl font-black text-cyan-400 mb-4">[FÄHIGKEKEITEN]</h3>
+                    <p class="text-gray-400">Du hast noch keine Fähigkeiten erworben.</p>
+                    <p class="text-sm text-gray-600 mt-4"> (Dieses System wird später freigeschaltet)</p>
+                </div>
+            `;
+        }
+
+        function renderInventoryTab() {
+            return `
+                <div class="solo-card p-6 text-center mt-6">
+                    <h3 class="text-3xl font-black text-cyan-400 mb-4">[INVENTAR]</h3>
+                    <p class="text-gray-400">Dein Inventar ist leer.</p>
+                    <p class="text-sm text-gray-600 mt-4"> (Dieses System wird später freigeschaltet)</p>
+                </div>
+            `;
+        }
+
+
+        function renderAppContent() {
+            switch (appState.currentTab) {
+                case 'status':
+                    return renderStatusTab();
+                case 'quest':
+                    return renderQuestTab();
+                case 'abilities':
+                    return renderAbilitiesTab();
+                case 'inventory':
+                    return renderInventoryTab();
+                default:
+                    return renderQuestTab();
+            }
+        }
+
+        function updateUI() {
+            const appContainer = document.getElementById('appContainer');
+            const midnightOverlay = document.getElementById('midnightOverlay');
+            const loader = document.getElementById('loader');
+            const globalCountdownHeader = document.getElementById('globalCountdownHeader');
+
+
+            if (appState.isLoading || !appState.isAuthReady) {
+                loader.style.display = 'flex';
+                appContainer.style.display = 'none';
+                midnightOverlay.style.display = 'none';
+                globalCountdownHeader.style.display = 'none'; 
+                return;
+            } else {
+                 loader.style.display = 'none';
+            }
+
+
+            if (appState.midnightTriggered) {
+                // Zeige Straf-Overlay
+                appContainer.style.display = 'none';
+                midnightOverlay.style.display = 'flex';
+                globalCountdownHeader.style.display = 'none'; 
+            } else {
+                // Zeige Haupt-App
+                midnightOverlay.style.display = 'none';
+                appContainer.style.display = 'block'; 
+                globalCountdownHeader.style.display = 'block'; 
+
+                // Aktualisiere Hauptinhalt
+                const contentArea = document.getElementById('contentArea');
+                
+                const newContent = renderAppContent();
+                contentArea.innerHTML = newContent;
+                
+                // Aktualisiere Tabs
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    if (btn.dataset.tab === appState.currentTab) {
+                        btn.classList.add('active-tab');
+                        btn.classList.remove('inactive-tab');
+                    } else {
+                        btn.classList.add('inactive-tab');
+                        btn.classList.remove('active-tab');
+                    }
+                });
+            }
+        }
+        
+        window.updateUI = updateUI; 
+
+        // Start Firebase
+        window.onload = initializeFirebase;
+    </script>
+</head>
+<body class="flex items-start justify-center min-h-screen">
+
+    <!-- Lade-Indikator -->
+    <div id="loader" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90" style="display:none;">
+        <div class="loader"></div>
+        <p class="mt-4 text-cyan-400 font-bold text-lg">[SYSTEM] Verbinde mit Server...</p>
+    </div>
+    
+    <!-- Globaler Countdown-Header (Immer sichtbar) -->
+    <div id="globalCountdownHeader" class="fixed top-0 left-0 right-0 z-40 global-header p-2 text-center shadow-2xl" style="display:none;">
+        <p class="time-label text-gray-400">QUEST ABLAUF IN</p>
+        <p id="countdownDisplay" class="countdown-display">--h --m --s</p>
+    </div>
+
+    <!-- Haupt-App-Container -->
+    <div id="appContainer" class="w-full max-w-lg" style="display:none;">
+        
+        <!-- Hauptinhaltsbereich (ändert sich je nach Tab) -->
+        <div id="contentArea" class="pb-4">
+            <!-- Inhalt wird hier von renderAppContent eingefügt -->
+        </div>
+
+    </div>
+
+    <!-- Mitternachts-Overlay (Der Solo Leveling Straf-Bildschirm) -->
+    <div id="midnightOverlay" class="midnight-overlay">
+        <div class="max-w-lg w-full p-8">
+            <h2 class="penalty-warning mb-6">
+                [STRAFQUEST]
+            </h2>
+             <p class="text-3xl text-gray-100 font-bold mb-8 leading-snug">
+                Zeitlimit überschritten. Die Tägliche Quest ist fehlgeschlagen.
+            </p>
+            <p class="text-xl text-red-300 mb-10">
+                **BEGINNE SOFORT MIT DER STRAFQUEST!**
+            </p>
+            <button onclick="startPenaltyQuest()"
+                    class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 shadow-md focus:outline-none focus:ring-4 focus:ring-red-500 focus:ring-opacity-50">
+                [BESTÄTIGEN] Strafquest beginnen
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav flex justify-around items-center">
+        <button data-tab="status" onclick="changeTab('status')" class="tab-button flex flex-col items-center p-1 inactive-tab">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0v-6a2 2 0 012-2h2a2 2 0 012 2v6a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            <span class="text-xs font-semibold">Status</span>
+        </button>
+        <button data-tab="quest" onclick="changeTab('quest')" class="tab-button flex flex-col items-center p-1 active-tab">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-xs font-semibold">Quest</span>
+        </button>
+        <button data-tab="abilities" onclick="changeTab('abilities')" class="tab-button flex flex-col items-center p-1 inactive-tab">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+            <span class="text-xs font-semibold">Fähigkeiten</span>
+        </button>
+        <button data-tab="inventory" onclick="changeTab('inventory')" class="tab-button flex flex-col items-center p-1 inactive-tab">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m4 10v6h8v-6m0 0L12 17l-4-2"></path></svg>
+            <span class="text-xs font-semibold">Inventar</span>
+        </button>
+    </div>
+
+</body>
+</html>
+
